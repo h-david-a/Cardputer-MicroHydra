@@ -1,10 +1,11 @@
 import machine
 import ubinascii
 #import uos
-import urequests
+
 import network
 
 from lib import st7789fbuf, mhconfig, keyboard
+from lib import mrequests as requests
 
 CONFIG = mhconfig.Config()
 
@@ -20,10 +21,10 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
                 current_version = current_version_file.readline().strip()
 
         if auth:
-            response = urequests.get(f'{host}/{project}/version', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+            response = requests.get(f'{host}/{project}/version', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
         else:
             print(f'querying: {host}/{project}/version')
-            response = urequests.get(f'{host}/{project}/version', timeout=timeout)
+            response = requests.get(f'{host}/{project}/version', timeout=timeout)
             
         response_status_code = response.status_code
         response_text = response.text
@@ -40,9 +41,9 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
 
 def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=None, timeout=5):
     if auth:
-        response = urequests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+        response = requests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
     else:
-        response = urequests.get(f'{host}/{project}/manifest', timeout=timeout)
+        response = requests.get(f'{host}/{project}/manifest', timeout=timeout)
     response_status_code = response.status_code
     response_text = response.text
     response.close()
@@ -91,18 +92,23 @@ def ota_update(host, project, filenames=None, use_version_prefix=False, user=Non
                                     raise
                     continue
                 if auth:
-                    response = urequests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+                    response = requests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
                 else:
-                    response = urequests.get(f'{host}/{project}/{filename}', timeout=timeout)
+                    response = requests.get(f'{host}/{project}/{filename}', timeout=timeout)
                 response_status_code = response.status_code
                 response_content = response.content
+                print(f'downloaded: {temp_dir_name}/{filename}: {response._content_size}')
+                
+                response.save(f'{temp_dir_name}/{filename}',chunk_size=1024)
                 response.close()
                 if response_status_code != 200:
                     print(f'Remote source file {host}/{project}/{filename} not found')
                     all_files_found = False
                     continue
-                with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
-                    source_file.write(response_content)
+                 
+#                 with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+#                     print(f'downloaded: {temp_dir_name}/{filename}')
+#                     source_file.write(response_content)
             if all_files_found:
                 dirs=[]
                 for filename in filenames:
@@ -175,5 +181,7 @@ if NIC.isconnected():
     
 print('ota_update')
 #ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas/store', 'App01',use_version_prefix=False)
+#ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/main','MicroHydra')
 
-ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/main','MicroHydra')
+
+ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/feature/ota_update','MicroHydra')
