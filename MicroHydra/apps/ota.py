@@ -136,3 +136,7 @@ def check_for_ota_update(host, project, user=None, passwd=None, timeout=5, soft_
         else:
             print(f'Found new version {remote_version}, hard-resetting device...')
             machine.reset()
+
+
+
+ota_update('https://github.com/h-david-a/Cardputer-MicroHydra/tree/draft/silly-tamas/store/', 'App01')
