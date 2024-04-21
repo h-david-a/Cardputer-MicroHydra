@@ -1,23 +1,34 @@
 import machine
 import ubinascii
-import uos
+#import uos
 import urequests
+import network
+
+from lib import st7789fbuf, mhconfig, keyboard
+
+CONFIG = mhconfig.Config()
+
 
 
 def check_version(host, project, auth=None, timeout=5) -> (bool, str):
     current_version = ''
+    version_file = f'version-{project}'
     try:
-        if 'version' in uos.listdir():
-            with open('version', 'r') as current_version_file:
+        print(f'looking for version file: {version_file}')
+        if version_file in os.listdir():
+            with open(version_file, 'r') as current_version_file:
                 current_version = current_version_file.readline().strip()
 
         if auth:
             response = urequests.get(f'{host}/{project}/version', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
         else:
+            print(f'querying: {host}/{project}/version')
             response = urequests.get(f'{host}/{project}/version', timeout=timeout)
+            
         response_status_code = response.status_code
         response_text = response.text
         response.close()
+        print(f'Response: {response_status_code}. Text: {response_text}')
         if response_status_code != 200:
             print(f'Remote version file {host}/{project}/version not found')
             return False, current_version
@@ -53,24 +64,28 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
     all_files_found = True
     auth = generate_auth(user, passwd)
     prefix_or_path_separator = '_' if use_version_prefix else '/'
+    temp_dir_name = 'tmp'
     try:
+        print('Checking version')
         version_changed, remote_version = check_version(host, project, auth=auth, timeout=timeout)
         if version_changed:
             try:
-                uos.mkdir('tmp')
+                print(f'Creating temp dir: {temp_dir_name}')
+                os.mkdir(temp_dir_name)
+                
             except OSError as e:
                 if e.errno != 17:
                     raise
             if filenames is None:
+                print('Fetching manifest')
                 filenames = fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=auth, timeout=timeout)
             for filename in filenames:
                 if filename.endswith('/'):
-                    dir_path="tmp"
                     for dir in filename.split('/'):
                         if len(dir) > 0:
-                            built_path=f"{dir_path}/{dir}"
+                            built_path=f"{temp_dir_name}/{dir}"
                             try:
-                                uos.mkdir(built_path)
+                                os.mkdir(built_path)
                             except OSError as e:
                                 if e.errno != 17:
                                     raise
@@ -86,7 +101,7 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                     print(f'Remote source file {host}/{project}/{remote_version}{prefix_or_path_separator}{filename} not found')
                     all_files_found = False
                     continue
-                with open(f'tmp/{filename}', 'wb') as source_file:
+                with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
                     source_file.write(response_content)
             if all_files_found:
                 dirs=[]
@@ -97,20 +112,20 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                             if len(dir) > 0:
                                 built_path=f"{dir_path}/{dir}"
                                 try:
-                                    uos.mkdir(built_path)
+                                    os.mkdir(built_path)
                                 except OSError as e:
                                     if e.errno != 17:
                                         raise
-                                dirs.append(f"tmp/{built_path}")
+                                dirs.append(f"{temp_dir_name}/{built_path}")
                         continue
                     #print(f"tmp/{filename} -> {filename}")
-                    with open(f'tmp/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
+                    with open(f'{temp_dir_name}/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
                         target_file.write(source_file.read())
-                    uos.remove(f'tmp/{filename}')
+                    os.remove(f'{temp_dir_name}/{filename}')
                 try:
                     while len(dirs) > 0:
-                        uos.rmdir(dirs.pop())
-                    uos.rmdir('tmp')
+                        os.rmdir(dirs.pop())
+                    os.rmdir(temp_dir_name)
                 except:
                     pass
                 with open('version', 'w') as current_version_file:
@@ -139,4 +154,36 @@ def check_for_ota_update(host, project, user=None, passwd=None, timeout=5, soft_
 
 
 
-ota_update('https://github.com/h-david-a/Cardputer-MicroHydra/tree/draft/silly-tamas/store/', 'App01')
+# wifi loves to give unknown runtime errors, just try it twice:
+try:
+    NIC = network.WLAN(network.STA_IF)
+except RuntimeError as e:
+    print(e)
+    try:
+        NIC = network.WLAN(network.STA_IF)
+    except RuntimeError as e:
+        NIC = None
+        print("Wifi WLAN object couldnt be created. Gave this error:", e)
+        import micropython
+        print(micropython.mem_info())
+
+
+
+if not NIC.active():  # turn on wifi if it isn't already
+    print('activating NIC')
+    NIC.active(True)
+            
+if not NIC.isconnected():  # try connecting
+    try:
+        print(f"connecting to {CONFIG['wifi_ssid']}")
+        NIC.connect(CONFIG['wifi_ssid'], CONFIG['wifi_pass'])
+    except OSError as e:
+        print("wifi_sync_rtc had this error when connecting:", e)
+
+    
+
+if NIC.isconnected():
+    print ('we are online!')
+    
+print('ota_update')
+ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas/store', 'App01',use_version_prefix=False)
