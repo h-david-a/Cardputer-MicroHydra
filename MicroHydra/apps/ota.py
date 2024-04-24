@@ -1,14 +1,14 @@
 import machine
 import ubinascii
 #import uos
-#import requests as requests
 import network
+# import shutil
 
 from lib import st7789fbuf, mhconfig, keyboard, mhrequests as requests
 
 CONFIG = mhconfig.Config()
 
-
+# print(shutil.disk_usage('/').free)
 
 def check_version(host, project, auth=None) -> (bool, str):
     current_version = ''
@@ -66,11 +66,14 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
     all_files_found = True
     auth = generate_auth(user, passwd)
     prefix_or_path_separator = '_' if use_version_prefix else '/'
-    temp_dir_name = 'tmp'
+    temp_dir_name = 'ota_tmp'
     try:
         print('Checking version')
         version_changed, remote_version = check_version(host, project, auth=auth)
         if version_changed:
+#             if os.path.exists(temp_dir_name):
+#             print(f'Removing temp dir: {temp_dir_name}')
+#             shutil.rmtree(temp_dir_name)
             try:
                 print(f'Creating temp dir: {temp_dir_name}')
                 os.mkdir(temp_dir_name)
@@ -99,12 +102,12 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                 if auth:
                     with requests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}) as response:
                         for chunk in response.iter_content():
-                            with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+                            with open(f'{temp_dir_name}/{filename}', 'ab') as source_file:
                                 source_file.write(chunk.decode(response.encoding))
                 else:
                     with requests.get(f'{host}/{project}/{filename}') as response:
                         for chunk in response.iter_content():
-                            with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+                            with open(f'{temp_dir_name}/{filename}', 'ab') as source_file:
                                 source_file.write(chunk.decode(response.encoding))
     
             if all_files_found:
