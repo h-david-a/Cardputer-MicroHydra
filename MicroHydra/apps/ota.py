@@ -10,7 +10,7 @@ CONFIG = mhconfig.Config()
 
 
 
-def check_version(host, project, auth=None, timeout=5) -> (bool, str):
+def check_version(host, project, auth=None) -> (bool, str):
     current_version = ''
     version_file = f'version-{project}'
     try:
@@ -20,10 +20,10 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
                 current_version = current_version_file.readline().strip()
 
         if auth:
-            response = requests.get(f'{host}/{project}/version', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+            response = requests.get(f'{host}/{project}/version', headers={'Authorization': f'Basic {auth}'})
         else:
             print(f'querying: {host}/{project}/version')
-            response = requests.get(f'{host}/{project}/version', timeout=timeout)
+            response = requests.get(f'{host}/{project}/version')
             
         response_status_code = response.status_code
         response_text = response.text
@@ -38,12 +38,12 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
         print(f'Something went wrong: {ex}')
         return False, current_version
 
-def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=None, timeout=5):
+def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=None):
     print('Fetching manifest')
     if auth:
-        response = requests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+        response = requests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'})
     else:
-        response = requests.get(f'{host}/{project}/manifest', timeout=timeout)
+        response = requests.get(f'{host}/{project}/manifest')
     response_status_code = response.status_code
     response_text = response.text
     response.close()
@@ -62,14 +62,14 @@ def generate_auth(user=None, passwd=None) -> str | None:
     return auth_bytes.decode().strip()
 
 
-def ota_update(host, project, filenames=None, use_version_prefix=True, user=None, passwd=None, hard_reset_device=True, soft_reset_device=False, timeout=5) -> None:
+def ota_update(host, project, filenames=None, use_version_prefix=True, user=None, passwd=None, hard_reset_device=True, soft_reset_device=False) -> None:
     all_files_found = True
     auth = generate_auth(user, passwd)
     prefix_or_path_separator = '_' if use_version_prefix else '/'
     temp_dir_name = 'tmp'
     try:
         print('Checking version')
-        version_changed, remote_version = check_version(host, project, auth=auth, timeout=timeout)
+        version_changed, remote_version = check_version(host, project, auth=auth)
         if version_changed:
             try:
                 print(f'Creating temp dir: {temp_dir_name}')
@@ -79,14 +79,15 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                 if e.errno != 17:
                     raise
             if filenames is None:
-                filenames = fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=auth, timeout=timeout)
+                filenames = fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=auth)
                 
             for filename in filenames:
                 print(f'Processing file: {filename}')
                 if filename.endswith('/'):
+                    built_path=f"{temp_dir_name}"
                     for dir in filename.split('/'):
                         if len(dir) > 0:
-                            built_path=f"{temp_dir_name}/{dir}"
+                            built_path=f"{built_path}/{dir}"
                             try:
                                 print(f'Creating dir: {built_path}')
                                 os.mkdir(built_path)
@@ -96,22 +97,16 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                     continue
                 print(f'Downloading file: {filename}')
                 if auth:
-                    response = requests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+                    with requests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}) as response:
+                        for chunk in response.iter_content():
+                            with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+                                source_file.write(chunk.decode(response.encoding))
                 else:
-                    response = requests.get(f'{host}/{project}/{filename}', timeout=timeout)
-                print(f'Got response: {len(response.content)} bytes')
-                response_status_code = response.status_code
-                response_content = response.content
-                print(f'Downloaded file: {len(response_content)} bytes')
-                response.close()
-                print('======Closed response======')
-                if response_status_code != 200:
-                    print(f'Remote source file {host}/{project}/{filename} not found')
-                    all_files_found = False
-                    continue
-                with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
-                    print(f'Dumping to disk')
-                    source_file.write(response_content)
+                    with requests.get(f'{host}/{project}/{filename}') as response:
+                        for chunk in response.iter_content():
+                            with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+                                source_file.write(chunk.decode(response.encoding))
+    
             if all_files_found:
                 dirs=[]
                 for filename in filenames:
@@ -150,9 +145,9 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
         raise ex
 
 
-def check_for_ota_update(host, project, user=None, passwd=None, timeout=5, soft_reset_device=False):
+def check_for_ota_update(host, project, user=None, passwd=None, soft_reset_device=False):
     auth = generate_auth(user, passwd)
-    version_changed, remote_version = check_version(host, project, auth=auth, timeout=timeout)
+    version_changed, remote_version = check_version(host, project, auth=auth)
     if version_changed:
         if soft_reset_device:
             print(f'Found new version {remote_version}, soft-resetting device...')
