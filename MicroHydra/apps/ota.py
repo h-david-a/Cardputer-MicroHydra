@@ -40,14 +40,14 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
 
 def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=None, timeout=5):
     if auth:
-        response = urequests.get(f'{host}/{project}/{remote_version}{prefix_or_path_separator}manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+        response = urequests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
     else:
-        response = urequests.get(f'{host}/{project}/{remote_version}{prefix_or_path_separator}manifest', timeout=timeout)
+        response = urequests.get(f'{host}/{project}/manifest', timeout=timeout)
     response_status_code = response.status_code
     response_text = response.text
     response.close()
     if response_status_code != 200:
-        print(f'Remote manifest file {host}/{project}/{remote_version}{prefix_or_path_separator}manifest not found')
+        print(f'Remote manifest file {host}/{project}/manifest not found')
         raise Exception(f"Missing manifest for {remote_version}")
     return response_text.split()
     
