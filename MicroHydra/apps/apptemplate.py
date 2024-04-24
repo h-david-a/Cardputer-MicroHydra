@@ -2,6 +2,7 @@ from lib import st7789fbuf, mhconfig, keyboard
 import machine, time
 
 """
+OTA TEST!
 MicroHydra App Template
 Version: 1.0
 

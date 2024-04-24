@@ -123,9 +123,9 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                                 dirs.append(f"{temp_dir_name}/{built_path}")
                         continue
                     print(f"{temp_dir_name}/{filename} -> {filename}")
-                    # with open(f'{temp_dir_name}/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
-                    #     target_file.write(source_file.read())
-                    # os.remove(f'{temp_dir_name}/{filename}')
+                    with open(f'{temp_dir_name}/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
+                         target_file.write(source_file.read())
+                    os.remove(f'{temp_dir_name}/{filename}')
                 try:
                     while len(dirs) > 0:
                         os.rmdir(dirs.pop())
