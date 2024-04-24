@@ -91,14 +91,14 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                                     raise
                     continue
                 if auth:
-                    response = urequests.get(f'{host}/{project}/{remote_version}{prefix_or_path_separator}{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
+                    response = urequests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
                 else:
-                    response = urequests.get(f'{host}/{project}/{remote_version}{prefix_or_path_separator}{filename}', timeout=timeout)
+                    response = urequests.get(f'{host}/{project}/{filename}', timeout=timeout)
                 response_status_code = response.status_code
                 response_content = response.content
                 response.close()
                 if response_status_code != 200:
-                    print(f'Remote source file {host}/{project}/{remote_version}{prefix_or_path_separator}{filename} not found')
+                    print(f'Remote source file {host}/{project}/{filename} not found')
                     all_files_found = False
                     continue
                 with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
@@ -118,10 +118,10 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                                         raise
                                 dirs.append(f"{temp_dir_name}/{built_path}")
                         continue
-                    #print(f"tmp/{filename} -> {filename}")
-                    with open(f'{temp_dir_name}/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
-                        target_file.write(source_file.read())
-                    os.remove(f'{temp_dir_name}/{filename}')
+                    print(f"{temp_dir_name}/{filename} -> {filename}")
+                    # with open(f'{temp_dir_name}/{filename}', 'rb') as source_file, open(filename, 'wb') as target_file:
+                    #     target_file.write(source_file.read())
+                    # os.remove(f'{temp_dir_name}/{filename}')
                 try:
                     while len(dirs) > 0:
                         os.rmdir(dirs.pop())
@@ -188,4 +188,4 @@ if NIC.isconnected():
 print('ota_update')
 # ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas/store', 'App01',use_version_prefix=False)
 
-ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/feature/ota_update', 'MicroHydra',use_version_prefix=False)
+ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas', 'MicroHydra',use_version_prefix=False)
