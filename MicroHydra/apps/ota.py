@@ -50,6 +50,7 @@ def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth
     if response_status_code != 200:
         print(f'Remote manifest file {host}/{project}/manifest not found')
         raise Exception(f"Missing manifest for {remote_version}")
+    response.save("manifesto.txt")
     return response_text.split()
     
 def generate_auth(user=None, passwd=None) -> str | None:
@@ -99,8 +100,9 @@ def ota_update(host, project, filenames=None, use_version_prefix=False, user=Non
                 response_content = response.content
                 print(f'downloaded: {temp_dir_name}/{filename}: {response._content_size}')
                 
-                response.save(f'{temp_dir_name}/{filename}',chunk_size=1024)
+                #response.save(f'{temp_dir_name}/{filename}',chunk_size=1024)
                 response.close()
+                response.save(f'{temp_dir_name}/{filename}')
                 if response_status_code != 200:
                     print(f'Remote source file {host}/{project}/{filename} not found')
                     all_files_found = False

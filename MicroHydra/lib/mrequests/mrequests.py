@@ -211,6 +211,7 @@ class Response:
                 fobj.write(buf[:num_read_chunk])
             else:
                 # Read a chunk of data
+                print(f"reading more. self.chunked: {self.chunked}, chunk_size:{chunk_size},MAX_READ_SIZE: {MAX_READ_SIZE},remain: {remain}. Min is: {min(chunk_size or MAX_READ_SIZE, remain)}")
                 chunk = self.read(size=None if self.chunked
                                   else min(chunk_size or MAX_READ_SIZE, remain))
                 num_read_total += len(chunk)
@@ -321,16 +322,18 @@ def request(
             if ctx.scheme == "https":
                 try:
                     import tls as ssl
+                    
                 except ImportError:
                     try:
                         import ssl
+                        
+
                     except ImportError:
                         import ussl as ssl
 
-
                 # print("Wrapping socket with TLS")
                 if ssl_context is None:
-                    if hasattr(ssl, "create_default_context"):
+                    if hasattr(ssl, "create_default_context"):                
                         ssl_context = ssl.create_default_context()
                     else:
                         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
