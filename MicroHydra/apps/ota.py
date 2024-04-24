@@ -39,6 +39,7 @@ def check_version(host, project, auth=None, timeout=5) -> (bool, str):
         return False, current_version
 
 def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=None, timeout=5):
+    print('Fetching manifest')
     if auth:
         response = urequests.get(f'{host}/{project}/manifest', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
     else:
@@ -49,6 +50,7 @@ def fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth
     if response_status_code != 200:
         print(f'Remote manifest file {host}/{project}/manifest not found')
         raise Exception(f"Missing manifest for {remote_version}")
+    print(f'Fetched manifest: {len(response_text)} bytes')
     return response_text.split()
     
 def generate_auth(user=None, passwd=None) -> str | None:
@@ -77,31 +79,38 @@ def ota_update(host, project, filenames=None, use_version_prefix=True, user=None
                 if e.errno != 17:
                     raise
             if filenames is None:
-                print('Fetching manifest')
                 filenames = fetch_manifest(host, project, remote_version, prefix_or_path_separator, auth=auth, timeout=timeout)
+                
             for filename in filenames:
+                print(f'Processing file: {filename}')
                 if filename.endswith('/'):
                     for dir in filename.split('/'):
                         if len(dir) > 0:
                             built_path=f"{temp_dir_name}/{dir}"
                             try:
+                                print(f'Creating dir: {built_path}')
                                 os.mkdir(built_path)
                             except OSError as e:
                                 if e.errno != 17:
                                     raise
                     continue
+                print(f'Downloading file: {filename}')
                 if auth:
                     response = urequests.get(f'{host}/{project}/{filename}', headers={'Authorization': f'Basic {auth}'}, timeout=timeout)
                 else:
                     response = urequests.get(f'{host}/{project}/{filename}', timeout=timeout)
+                print(f'Got response: {len(response.content)} bytes')
                 response_status_code = response.status_code
                 response_content = response.content
+                print(f'Downloaded file: {len(response_content)} bytes')
                 response.close()
+                print('======Closed response======')
                 if response_status_code != 200:
                     print(f'Remote source file {host}/{project}/{filename} not found')
                     all_files_found = False
                     continue
                 with open(f'{temp_dir_name}/{filename}', 'wb') as source_file:
+                    print(f'Dumping to disk')
                     source_file.write(response_content)
             if all_files_found:
                 dirs=[]
