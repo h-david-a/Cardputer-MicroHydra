@@ -186,4 +186,6 @@ if NIC.isconnected():
     print ('we are online!')
     
 print('ota_update')
-ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas/store', 'App01',use_version_prefix=False)
+# ota_update('https://raw.githubusercontent.com/h-david-a/Cardputer-MicroHydra/draft/silly-tamas/store', 'App01',use_version_prefix=False)
+
+ota_update('https://github.com/h-david-a/Cardputer-MicroHydra/tree/feature/ota_update', 'MicroHydra',use_version_prefix=False)
